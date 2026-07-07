@@ -1,7 +1,7 @@
 # PRODUCT REQUIREMENTS DOCUMENT
 
 ## Product Name
-Smart LMS
+Edusphere
 
 ## Vision
 Platform pembelajaran modern untuk sekolah dan kampus.
