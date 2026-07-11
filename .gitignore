@@ -18,3 +18,5 @@ yarn-error.log
 /.idea
 /.vscode
 .agents
+/php8/
+/composer.phar
