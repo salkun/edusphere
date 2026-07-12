@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Models\Subject;
+use App\Models\Assignment;
+use App\Models\Material;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,8 +22,98 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $user = auth()->user();
+    
+    // Menghitung ucapan selamat berdasarkan waktu Purwakarta (WIB / Asia/Jakarta)
+    $hour = \Carbon\Carbon::now('Asia/Jakarta')->hour;
+    if ($hour >= 4 && $hour < 11) {
+        $greeting = 'Selamat pagi';
+    } elseif ($hour >= 11 && $hour < 15) {
+        $greeting = 'Selamat siang';
+    } elseif ($hour >= 15 && $hour < 19) {
+        $greeting = 'Selamat sore';
+    } else {
+        $greeting = 'Selamat malam';
+    }
+    
+    // Mengambil kelas pertama tempat siswa terdaftar
+    $classroom = $user->classes()->first();
+    
+    $subjects = collect();
+    $upcomingAssignments = collect();
+    $recentMaterials = collect();
+    $completedMaterialIds = [];
+    $totalClassMaterialsCount = 0;
+    $completedClassMaterialsCount = 0;
+    $globalProgress = 0;
+    
+    if ($classroom) {
+        // Ambil ID materi yang sudah diselesaikan oleh siswa ini
+        $completedMaterialIds = $user->completedMaterials()->pluck('material_id')->toArray();
+
+        // Mengambil semua mata pelajaran di kelas tersebut beserta gurunya dan materinya
+        $subjects = Subject::with(['teacher', 'materials'])
+            ->where('class_id', $classroom->id)
+            ->get();
+
+        // Hitung progres belajar per mata pelajaran
+        foreach ($subjects as $subject) {
+            $totalMaterials = $subject->materials->count();
+            $completedMaterials = $subject->materials->whereIn('id', $completedMaterialIds)->count();
+            
+            // Set property dinamis untuk view
+            $subject->total_materials = $totalMaterials;
+            $subject->completed_materials = $completedMaterials;
+            $subject->progress = $totalMaterials > 0 ? round(($completedMaterials / $totalMaterials) * 100) : 0;
+            
+            // Akumulasi progres global
+            $totalClassMaterialsCount += $totalMaterials;
+            $completedClassMaterialsCount += $completedMaterials;
+        }
+            
+        $subjectIds = $subjects->pluck('id');
+        
+        // Mengambil tugas mendatang (belum melewati deadline)
+        $upcomingAssignments = Assignment::with('subject.teacher')
+            ->whereIn('subject_id', $subjectIds)
+            ->where('deadline', '>', now())
+            ->orderBy('deadline', 'asc')
+            ->get();
+            
+        // Mengambil materi terbaru
+        $recentMaterials = Material::with('subject.teacher')
+            ->whereIn('subject_id', $subjectIds)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Hitung progres global
+        $globalProgress = $totalClassMaterialsCount > 0 
+            ? round(($completedClassMaterialsCount / $totalClassMaterialsCount) * 100) 
+            : 0;
+    }
+    
+    return view('dashboard', compact(
+        'classroom', 
+        'subjects', 
+        'upcomingAssignments', 
+        'recentMaterials',
+        'completedMaterialIds',
+        'totalClassMaterialsCount',
+        'completedClassMaterialsCount',
+        'globalProgress',
+        'greeting'
+    ));
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::post('/materials/{material}/toggle', function (\App\Models\Material $material) {
+    $user = auth()->user();
+    if ($user->completedMaterials()->where('material_id', $material->id)->exists()) {
+        $user->completedMaterials()->detach($material->id);
+    } else {
+        $user->completedMaterials()->attach($material->id);
+    }
+    return back();
+})->middleware('auth')->name('materials.toggle');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

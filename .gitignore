@@ -20,3 +20,4 @@ yarn-error.log
 .agents
 /php8/
 /composer.phar
+/scratch

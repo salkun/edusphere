@@ -2,8 +2,14 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
+use App\Models\Classroom;
+use App\Models\Subject;
+use App\Models\Material;
+use App\Models\Assignment;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -12,11 +18,126 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
+        // 1. Create Student
+        $student = User::create([
+            'name' => 'Budi Santoso',
+            'email' => 'siswa@almuhajirin.sch.id',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+        ]);
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        // 2. Create Teachers
+        $teacherAhmad = User::create([
+            'name' => 'Pak Ahmad F.',
+            'email' => 'ahmad@almuhajirin.sch.id',
+            'password' => Hash::make('password'),
+            'role' => 'teacher',
+        ]);
+
+        $teacherSiti = User::create([
+            'name' => 'Bu Siti A.',
+            'email' => 'siti@almuhajirin.sch.id',
+            'password' => Hash::make('password'),
+            'role' => 'teacher',
+        ]);
+
+        $teacherDedi = User::create([
+            'name' => 'Pak Dedi K.',
+            'email' => 'dedi@almuhajirin.sch.id',
+            'password' => Hash::make('password'),
+            'role' => 'teacher',
+        ]);
+
+        $teacherRina = User::create([
+            'name' => 'Bu Rina H.',
+            'email' => 'rina@almuhajirin.sch.id',
+            'password' => Hash::make('password'),
+            'role' => 'teacher',
+        ]);
+
+        // 3. Create Classroom
+        $classroom = Classroom::create([
+            'name' => 'X RPL A',
+        ]);
+
+        // 4. Attach Student to Classroom
+        $classroom->students()->attach($student->id);
+
+        // 5. Create Subjects linked to Class and Teachers
+        $subjectWeb = Subject::create([
+            'name' => 'Pemrograman Web',
+            'class_id' => $classroom->id,
+            'teacher_id' => $teacherAhmad->id,
+        ]);
+
+        $subjectDesign = Subject::create([
+            'name' => 'Desain Grafis',
+            'class_id' => $classroom->id,
+            'teacher_id' => $teacherSiti->id,
+        ]);
+
+        $subjectIndo = Subject::create([
+            'name' => 'Bahasa Indonesia',
+            'class_id' => $classroom->id,
+            'teacher_id' => $teacherDedi->id,
+        ]);
+
+        $subjectIpa = Subject::create([
+            'name' => 'IPA Terpadu',
+            'class_id' => $classroom->id,
+            'teacher_id' => $teacherRina->id,
+        ]);
+
+        // 6. Create Materials
+        Material::create([
+            'subject_id' => $subjectWeb->id,
+            'title' => 'CSS Grid Layout',
+            'content' => 'Materi tentang CSS Grid Layout untuk merancang tata letak halaman web secara dua dimensi.',
+        ]);
+
+        Material::create([
+            'subject_id' => $subjectDesign->id,
+            'title' => 'Color Theory Basics',
+            'content' => 'Dasar-dasar teori warna termasuk warna primer, sekunder, komplementer, dan psikologi warna dalam desain.',
+        ]);
+
+        Material::create([
+            'subject_id' => $subjectIndo->id,
+            'title' => 'Struktur Teks Eksplanasi',
+            'content' => 'Mempelajari struktur penulisan teks eksplanasi yang terdiri dari pernyataan umum, deretan penjelas, dan interpretasi.',
+        ]);
+
+        // 7. Create Assignments
+        Assignment::create([
+            'subject_id' => $subjectWeb->id,
+            'title' => 'Membuat Landing Page Sederhana',
+            'description' => 'Tugas membuat landing page sederhana menggunakan HTML dan CSS Grid. Kumpulkan dalam bentuk file source code.',
+            'type' => 'coding',
+            'deadline' => Carbon::tomorrow()->setTime(23, 59, 0),
+        ]);
+
+        Assignment::create([
+            'subject_id' => $subjectDesign->id,
+            'title' => 'Poster Edukasi Lingkungan',
+            'description' => 'Buat poster digital bertema edukasi lingkungan hidup menggunakan aplikasi desain pilihan Anda. Kumpulkan dalam format PDF/PNG.',
+            'type' => 'file',
+            'deadline' => Carbon::now()->addDays(3)->setTime(23, 59, 0),
+        ]);
+
+        Assignment::create([
+            'subject_id' => $subjectIndo->id,
+            'title' => 'Teks Eksplanasi',
+            'description' => 'Tulis sebuah teks eksplanasi mengenai proses terjadinya fenomena alam (misal: hujan atau gempa bumi) langsung di editor.',
+            'type' => 'essay',
+            'deadline' => Carbon::now()->addDays(5)->setTime(23, 59, 0),
+        ]);
+
+        Assignment::create([
+            'subject_id' => $subjectIpa->id,
+            'title' => 'Laporan Praktikum',
+            'description' => 'Buat laporan tertulis tentang praktikum fotosintesis tumbuhan air. Scan hasil kerja tangan dan upload dalam format PDF.',
+            'type' => 'file',
+            'deadline' => Carbon::now()->addDays(7)->setTime(23, 59, 0),
+        ]);
     }
 }
