@@ -344,6 +344,10 @@ Route::get('/grades', function () {
     return view('grades', compact('classroom', 'reportCard', 'availableSemesters', 'selectedSemester'));
 })->middleware(['auth', 'verified'])->name('grades');
 
+Route::get('/settings', function () {
+    return view('settings');
+})->middleware(['auth', 'verified'])->name('settings');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
