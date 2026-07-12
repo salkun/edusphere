@@ -11,13 +11,20 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+        
+        // Mengambil kelas siswa
+        $classroom = $user->classes()->first();
+        
+        // Mengambil data rapor terbaru yang menyimpan biodata lengkap
+        $reportCard = \App\Models\ReportCard::where('student_id', $user->id)->first();
+        
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'classroom' => $classroom,
+            'reportCard' => $reportCard,
         ]);
     }
 
@@ -37,24 +44,37 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
+    public function updateAvatar(Request $request): RedirectResponse
     {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
         $user = $request->user();
+        $reportCard = \App\Models\ReportCard::where('student_id', $user->id)->first();
 
-        Auth::logout();
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            
+            // Buat folder jika belum ada
+            if (!file_exists(public_path('images/avatars'))) {
+                mkdir(public_path('images/avatars'), 0755, true);
+            }
+            
+            $filename = time() . '_' . $user->id . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('images/avatars'), $filename);
+            
+            if ($reportCard) {
+                // Hapus berkas avatar lama jika ada
+                if ($reportCard->avatar_path && file_exists(public_path($reportCard->avatar_path))) {
+                    @unlink(public_path($reportCard->avatar_path));
+                }
+                $reportCard->update([
+                    'avatar_path' => 'images/avatars/' . $filename
+                ]);
+            }
+        }
 
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
+        return redirect()->route('profile.edit')->with('status', 'avatar-updated');
     }
 }

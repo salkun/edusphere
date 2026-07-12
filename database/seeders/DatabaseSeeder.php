@@ -176,6 +176,13 @@ class DatabaseSeeder extends Seeder
             'excused_days' => 1,
             'unexcused_days' => 0,
             'homeroom_notes' => 'Pertahankan prestasi belajar Anda. Terus tingkatkan kemampuan praktikum coding dan luangkan waktu untuk membaca dokumentasi terbaru. Sukses selalu untuk Leonard!',
+            'place_of_birth' => 'Purwakarta',
+            'date_of_birth' => '2009-08-15',
+            'gender' => 'Laki-laki',
+            'religion' => 'Islam',
+            'address' => 'Jl. Veteran No. 123, Kel. Ciseureuh, Kec. Purwakarta, Kabupaten Purwakarta, Jawa Barat',
+            'phone_number' => '081234567890',
+            'avatar_path' => null,
         ]);
 
         \App\Models\ReportCardItem::create([
@@ -216,6 +223,13 @@ class DatabaseSeeder extends Seeder
             'excused_days' => 0,
             'unexcused_days' => 0,
             'homeroom_notes' => 'Pertahankan prestasi luar biasa ini, Leonard! Anda telah menunjukkan minat dan bakat yang sangat besar di bidang pemrograman. Selamat naik ke kelas XI!',
+            'place_of_birth' => 'Purwakarta',
+            'date_of_birth' => '2009-08-15',
+            'gender' => 'Laki-laki',
+            'religion' => 'Islam',
+            'address' => 'Jl. Veteran No. 123, Kel. Ciseureuh, Kec. Purwakarta, Kabupaten Purwakarta, Jawa Barat',
+            'phone_number' => '081234567890',
+            'avatar_path' => null,
         ]);
 
         \App\Models\ReportCardItem::create([

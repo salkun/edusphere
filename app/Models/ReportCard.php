@@ -16,7 +16,14 @@ class ReportCard extends Model
         'sick_days',
         'excused_days',
         'unexcused_days',
-        'homeroom_notes'
+        'homeroom_notes',
+        'place_of_birth',
+        'date_of_birth',
+        'gender',
+        'religion',
+        'address',
+        'phone_number',
+        'avatar_path'
     ];
 
     public function student(): BelongsTo
