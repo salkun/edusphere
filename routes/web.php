@@ -205,6 +205,145 @@ Route::get('/materials', function () {
     return view('materials', compact('classroom', 'subjects', 'completedMaterialIds'));
 })->middleware(['auth', 'verified'])->name('materials');
 
+Route::get('/assignments', function () {
+    $user = auth()->user();
+    
+    // Mengambil kelas beserta wali kelas
+    $classroom = $user->classes()->with(['homeroomTeacher'])->first();
+    
+    $assignments = collect();
+    $submittedAssignmentIds = [];
+    if ($classroom) {
+        $subjectIds = \App\Models\Subject::where('class_id', $classroom->id)->pluck('id');
+        
+        // Ambil semua tugas untuk kelas ini
+        $assignments = \App\Models\Assignment::with(['subject.teacher'])
+            ->whereIn('subject_id', $subjectIds)
+            ->orderBy('deadline', 'asc')
+            ->get();
+            
+        // Ambil ID tugas yang sudah dikumpulkan oleh siswa ini
+        $submittedAssignmentIds = \DB::table('submissions')
+            ->where('student_id', $user->id)
+            ->pluck('assignment_id')
+            ->toArray();
+    }
+    
+    return view('assignments', compact('classroom', 'assignments', 'submittedAssignmentIds'));
+})->middleware(['auth', 'verified'])->name('assignments');
+
+Route::get('/assignments/{assignment}', function (\App\Models\Assignment $assignment) {
+    $user = auth()->user();
+    
+    // Pastikan siswa memiliki akses ke tugas ini (berada di kelas yang sama)
+    $classroom = $user->classes()->first();
+    if (!$classroom) {
+        abort(403);
+    }
+    
+    $subjectIds = \App\Models\Subject::where('class_id', $classroom->id)->pluck('id')->toArray();
+    if (!in_array($assignment->subject_id, $subjectIds)) {
+        abort(403);
+    }
+    
+    $assignment->load(['subject.teacher']);
+    
+    // Cek apakah sudah dikumpulkan
+    $submission = \App\Models\Submission::where('assignment_id', $assignment->id)
+        ->where('student_id', $user->id)
+        ->first();
+        
+    return view('assignments-show', compact('classroom', 'assignment', 'submission'));
+})->middleware(['auth', 'verified'])->name('assignments.show');
+
+Route::post('/assignments/{assignment}/submit', function (\App\Models\Assignment $assignment) {
+    $user = auth()->user();
+    
+    // Pastikan siswa memiliki akses ke tugas ini
+    $classroom = $user->classes()->first();
+    if (!$classroom) {
+        abort(403);
+    }
+    
+    $subjectIds = \App\Models\Subject::where('class_id', $classroom->id)->pluck('id')->toArray();
+    if (!in_array($assignment->subject_id, $subjectIds)) {
+        abort(403);
+    }
+    
+    // Validasi input
+    request()->validate([
+        'content' => 'nullable|string',
+        'file' => 'nullable|file|mimes:pdf,zip,rar,png,jpg,jpeg|max:10240', // Max 10MB
+    ]);
+    
+    $filePath = null;
+    if (request()->hasFile('file')) {
+        $filePath = request()->file('file')->store('submissions', 'public');
+    }
+    
+    // Simpan atau update Submission
+    \App\Models\Submission::updateOrCreate(
+        [
+            'assignment_id' => $assignment->id,
+            'student_id' => $user->id,
+        ],
+        [
+            'content' => request('content'),
+            'file_path' => $filePath,
+            'status' => 'submitted',
+        ]
+    );
+    
+    return redirect()->route('assignments')->with('success', 'Tugas berhasil dikumpulkan!');
+})->middleware(['auth', 'verified'])->name('assignments.submit');
+
+Route::get('/announcements', function () {
+    $user = auth()->user();
+    
+    // Mengambil kelas beserta wali kelas
+    $classroom = $user->classes()->with(['homeroomTeacher'])->first();
+    
+    $announcements = collect();
+    if ($classroom) {
+        // Ambil seluruh pengumuman untuk kelas ini, diurutkan dari yang terbaru
+        $announcements = \App\Models\Announcement::with(['teacher'])
+            ->where('class_id', $classroom->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+    
+    return view('announcements', compact('classroom', 'announcements'));
+})->middleware(['auth', 'verified'])->name('announcements');
+
+Route::get('/grades', function () {
+    $user = auth()->user();
+    
+    // Mengambil kelas beserta wali kelas
+    $classroom = $user->classes()->with(['homeroomTeacher'])->first();
+    
+    // Mengambil seluruh pilihan semester yang tersedia untuk siswa ini
+    $availableSemesters = \App\Models\ReportCard::where('student_id', $user->id)
+        ->pluck('semester')
+        ->toArray();
+        
+    // Menentukan semester terpilih (default: semester pertama/terbaru jika tidak ada input)
+    $selectedSemester = request('semester');
+    if (!$selectedSemester || !in_array($selectedSemester, $availableSemesters)) {
+        $selectedSemester = reset($availableSemesters) ?: null;
+    }
+    
+    // Mengambil data rapor lengkap siswa ini berdasarkan semester yang dipilih
+    $reportCard = null;
+    if ($selectedSemester) {
+        $reportCard = \App\Models\ReportCard::with(['items.subject.teacher'])
+            ->where('student_id', $user->id)
+            ->where('semester', $selectedSemester)
+            ->first();
+    }
+        
+    return view('grades', compact('classroom', 'reportCard', 'availableSemesters', 'selectedSemester'));
+})->middleware(['auth', 'verified'])->name('grades');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

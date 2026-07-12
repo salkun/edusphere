@@ -23,7 +23,7 @@
             <div>
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">Kelas Aktif</h2>
-                    <a href="#" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
+                    <a href="{{ route('my-class') }}" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
                 </div>
                 
                 @if($subjects->isEmpty())
@@ -57,7 +57,7 @@
             <div>
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">Tugas Mendatang</h2>
-                    <a href="#" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
+                    <a href="{{ route('assignments') }}" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
                 </div>
 
                 @if($upcomingAssignments->isEmpty())
@@ -68,18 +68,9 @@
                     <div class="space-y-3">
                         @foreach($upcomingAssignments as $assignment)
                             @php
-                                $now = \Carbon\Carbon::now();
                                 $deadline = $assignment->deadline;
-                                if ($deadline->isTomorrow()) {
-                                    $deadlineText = 'Besok, ' . $deadline->format('H:i');
-                                } elseif ($deadline->isToday()) {
-                                    $deadlineText = 'Hari ini, ' . $deadline->format('H:i');
-                                } else {
-                                    $deadlineText = $deadline->diffForHumans($now, [
-                                        'parts' => 2,
-                                        'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW
-                                    ]);
-                                }
+                                $deadlineText = $deadline->translatedFormat('d M Y, H:i');
+                                $isSubmitted = in_array($assignment->id, $submittedAssignmentIds);
                                 
                                 // Map types for tag styles
                                 $tagStyle = match($assignment->type) {
@@ -100,9 +91,22 @@
                                 <div class="flex items-center justify-between sm:justify-end gap-6 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800">
                                     <div class="text-left sm:text-right">
                                         <div class="text-xs text-slate-400 dark:text-slate-500 font-semibold">TENGGAT WAKTU</div>
-                                        <div class="text-sm font-bold text-rose-500 dark:text-rose-400">{{ $deadlineText }}</div>
+                                        <div class="text-sm font-bold {{ $deadline->isPast() && !$isSubmitted ? 'text-slate-450 dark:text-slate-550' : 'text-rose-500 dark:text-rose-400' }}">{{ $deadlineText }}</div>
                                     </div>
-                                    <a href="#" class="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all duration-150 rounded-xl shadow-md shadow-indigo-500/10">Kerjakan</a>
+                                    @if($isSubmitted)
+                                        <button disabled class="px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-xl cursor-default inline-flex items-center gap-1 shadow-sm shrink-0">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Sudah Dikumpulkan
+                                        </button>
+                                    @elseif($deadline->isPast())
+                                        <button disabled class="px-5 py-2.5 text-sm font-bold text-slate-400 bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl cursor-not-allowed shrink-0">
+                                            Tenggat Terlewati
+                                        </button>
+                                    @else
+                                        <a href="{{ route('assignments.show', $assignment->id) }}" class="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all duration-150 rounded-xl shadow-md shadow-indigo-500/10 shrink-0">Kerjakan</a>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -114,7 +118,7 @@
             <div>
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">Materi Terbaru</h2>
-                    <a href="#" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
+                    <a href="{{ route('materials') }}" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
                 </div>
 
                 @if($recentMaterials->isEmpty())
@@ -140,14 +144,11 @@
                                     <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1 leading-snug line-clamp-2">{{ $material->title }}</h3>
                                     <p class="text-xs text-slate-400 dark:text-slate-500 font-semibold uppercase">{{ $material->subject->teacher->name }}</p>
                                 </div>
-                                <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                                    <form method="POST" action="{{ route('materials.toggle', $material->id) }}">
-                                        @csrf
-                                        <button type="submit" 
-                                                class="text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors duration-150 {{ $isCompleted ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : 'text-indigo-600 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 dark:text-indigo-400' }}">
-                                            {{ $isCompleted ? '✓ Selesai' : 'Tandai Selesai' }}
-                                        </button>
-                                    </form>
+                                <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded {{ $isCompleted ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20' : 'bg-slate-50 text-slate-500 dark:bg-slate-800' }}">
+                                        {{ $isCompleted ? '✓ Selesai' : 'Belum Selesai' }}
+                                    </span>
+                                    <a href="{{ route('materials') }}" class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Buka Materi</a>
                                 </div>
                             </div>
                         @endforeach
@@ -164,7 +165,6 @@
             <div class="p-6 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl shadow-sm text-center">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Progress Belajar</h3>
-                    <a href="#" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat detail</a>
                 </div>
                 
                 <!-- Circular Progress Bar UI Wrapper -->

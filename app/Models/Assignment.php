@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Assignment extends Model
 {
-    protected $fillable = ['subject_id', 'title', 'description', 'type', 'deadline'];
+    protected $fillable = ['subject_id', 'title', 'description', 'file_path', 'type', 'deadline'];
 
     protected $casts = [
         'deadline' => 'datetime',
