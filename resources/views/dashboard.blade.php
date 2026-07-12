@@ -190,7 +190,7 @@
 
                 <h4 class="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Total Progress</h4>
                 <p class="text-xs text-slate-500 dark:text-slate-400 px-4 leading-normal">
-                    Kamu telah menyelesaikan {{ $completedClassMaterialsCount }} dari {{ $totalClassMaterialsCount }} materi pembelajaran
+                    Kamu telah menyelesaikan {{ $completedClassItemsCount }} dari {{ $totalClassItemsCount }} aktivitas belajar (materi & tugas)
                 </p>
             </div>
 
@@ -205,7 +205,7 @@
                 </div>
                 
                 <div class="text-left">
-                    <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mb-1">0 hari</h3>
+                    <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100 mb-1">{{ $streak }} hari</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400">Pertahankan konsistensimu! Selesaikan minimal 1 materi/tugas setiap hari untuk mengumpulkan streak.</p>
                 </div>
             </div>

@@ -43,32 +43,44 @@ Route::get('/dashboard', function () {
     $upcomingAssignments = collect();
     $recentMaterials = collect();
     $completedMaterialIds = [];
-    $totalClassMaterialsCount = 0;
-    $completedClassMaterialsCount = 0;
+    $submittedAssignmentIds = [];
+    $totalClassItemsCount = 0;
+    $completedClassItemsCount = 0;
     $globalProgress = 0;
     
     if ($classroom) {
         // Ambil ID materi yang sudah diselesaikan oleh siswa ini
         $completedMaterialIds = $user->completedMaterials()->pluck('material_id')->toArray();
+        
+        // Ambil ID tugas yang sudah dikumpulkan oleh siswa ini
+        $submittedAssignmentIds = \DB::table('submissions')
+            ->where('student_id', $user->id)
+            ->pluck('assignment_id')
+            ->toArray();
 
-        // Mengambil semua mata pelajaran di kelas tersebut beserta gurunya dan materinya
-        $subjects = Subject::with(['teacher', 'materials'])
+        // Mengambil semua mata pelajaran di kelas tersebut beserta gurunya, materi, dan tugasnya
+        $subjects = Subject::with(['teacher', 'materials', 'assignments'])
             ->where('class_id', $classroom->id)
             ->get();
 
-        // Hitung progres belajar per mata pelajaran
+        // Hitung progres belajar per mata pelajaran (materi + tugas)
         foreach ($subjects as $subject) {
             $totalMaterials = $subject->materials->count();
+            $totalAssignments = $subject->assignments->count();
+            $totalItems = $totalMaterials + $totalAssignments;
+            
             $completedMaterials = $subject->materials->whereIn('id', $completedMaterialIds)->count();
+            $completedAssignments = $subject->assignments->whereIn('id', $submittedAssignmentIds)->count();
+            $completedItems = $completedMaterials + $completedAssignments;
             
             // Set property dinamis untuk view
-            $subject->total_materials = $totalMaterials;
-            $subject->completed_materials = $completedMaterials;
-            $subject->progress = $totalMaterials > 0 ? round(($completedMaterials / $totalMaterials) * 100) : 0;
+            $subject->total_items = $totalItems;
+            $subject->completed_items = $completedItems;
+            $subject->progress = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
             
             // Akumulasi progres global
-            $totalClassMaterialsCount += $totalMaterials;
-            $completedClassMaterialsCount += $completedMaterials;
+            $totalClassItemsCount += $totalItems;
+            $completedClassItemsCount += $completedItems;
         }
             
         $subjectIds = $subjects->pluck('id');
@@ -87,9 +99,51 @@ Route::get('/dashboard', function () {
             ->get();
 
         // Hitung progres global
-        $globalProgress = $totalClassMaterialsCount > 0 
-            ? round(($completedClassMaterialsCount / $totalClassMaterialsCount) * 100) 
+        $globalProgress = $totalClassItemsCount > 0 
+            ? round(($completedClassItemsCount / $totalClassItemsCount) * 100) 
             : 0;
+
+        // Hitung streak belajar (berdasarkan aktivitas penyelesaian materi + pengumpulan tugas)
+        $materialDates = $user->completedMaterials()
+            ->latest('material_student.created_at')
+            ->get()
+            ->map(fn($m) => \Carbon\Carbon::parse($m->pivot->created_at)->setTimezone('Asia/Jakarta')->startOfDay());
+
+        $submissionDates = \DB::table('submissions')
+            ->where('student_id', $user->id)
+            ->latest('created_at')
+            ->get()
+            ->map(fn($s) => \Carbon\Carbon::parse($s->created_at)->setTimezone('Asia/Jakarta')->startOfDay());
+
+        $completedDates = $materialDates->concat($submissionDates)
+            ->unique(fn($date) => $date->toDateString())
+            ->values()
+            ->sort(fn($a, $b) => $b->timestamp <=> $a->timestamp)
+            ->values();
+
+        $streak = 0;
+        if ($completedDates->isNotEmpty()) {
+            $today = \Carbon\Carbon::today('Asia/Jakarta');
+            $yesterday = \Carbon\Carbon::yesterday('Asia/Jakarta');
+            $latestActivityDate = $completedDates->first();
+            
+            if ($latestActivityDate->eq($today) || $latestActivityDate->eq($yesterday)) {
+                $streak = 1;
+                $currentDate = $latestActivityDate;
+                
+                for ($i = 1; $i < $completedDates->count(); $i++) {
+                    $prevDate = $completedDates->get($i);
+                    $diff = $currentDate->diffInDays($prevDate);
+                    
+                    if ($diff == 1) {
+                        $streak++;
+                        $currentDate = $prevDate;
+                    } elseif ($diff > 1) {
+                        break;
+                    }
+                }
+            }
+        }
     }
     
     return view('dashboard', compact(
@@ -98,10 +152,12 @@ Route::get('/dashboard', function () {
         'upcomingAssignments', 
         'recentMaterials',
         'completedMaterialIds',
-        'totalClassMaterialsCount',
-        'completedClassMaterialsCount',
+        'submittedAssignmentIds',
+        'totalClassItemsCount',
+        'completedClassItemsCount',
         'globalProgress',
-        'greeting'
+        'greeting',
+        'streak'
     ));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -140,11 +196,13 @@ Route::get('/materials', function () {
     $classroom = $user->classes()->with(['homeroomTeacher', 'subjects.teacher', 'subjects.materials'])->first();
     
     $subjects = collect();
+    $completedMaterialIds = [];
     if ($classroom) {
         $subjects = $classroom->subjects;
+        $completedMaterialIds = $user->completedMaterials()->pluck('material_id')->toArray();
     }
     
-    return view('materials', compact('classroom', 'subjects'));
+    return view('materials', compact('classroom', 'subjects', 'completedMaterialIds'));
 })->middleware(['auth', 'verified'])->name('materials');
 
 Route::middleware('auth')->group(function () {

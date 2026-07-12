@@ -67,25 +67,47 @@
                             @else
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     @foreach($subject->materials as $material)
-                                        <a href="{{ $material->file_path ?? '#' }}" 
-                                           target="_blank" 
-                                           class="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-300 transition-all duration-200 flex items-start gap-4">
-                                            <div class="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0">
-                                                <!-- PDF Document Icon -->
-                                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                </svg>
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <h4 class="text-sm font-bold text-slate-800 truncate mb-2">{{ $material->title }}</h4>
-                                                <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-650 hover:underline">
-                                                    <span>Buka File Modul</span>
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        @php
+                                            $isCompleted = in_array($material->id, $completedMaterialIds);
+                                        @endphp
+                                        <div x-data="{ 
+                                                 opened: {{ $isCompleted ? 'true' : 'false' }},
+                                                 isCompleted: {{ $isCompleted ? 'true' : 'false' }} 
+                                             }" 
+                                             class="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between gap-4">
+                                            <div class="flex items-start gap-4 flex-1 min-w-0">
+                                                <div class="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0">
+                                                    <!-- PDF Icon -->
+                                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                     </svg>
                                                 </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <h4 class="text-sm font-bold text-slate-800 truncate mb-2">{{ $material->title }}</h4>
+                                                    <a href="{{ $material->file_path ?? '#' }}" 
+                                                       target="_blank" 
+                                                       @click="opened = true"
+                                                       class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-650 hover:underline">
+                                                        <span>Buka File Modul</span>
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                        </svg>
+                                                    </a>
+                                                </div>
                                             </div>
-                                        </a>
+                                            
+                                            <!-- Tombol Tandai Selesai (Muncul jika file sudah pernah dibuka) -->
+                                            <div class="shrink-0" x-show="opened" x-transition>
+                                                <form method="POST" action="{{ route('materials.toggle', $material->id) }}">
+                                                    @csrf
+                                                    <button type="submit" 
+                                                            class="text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors duration-150"
+                                                            :class="isCompleted ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : 'text-indigo-600 border-indigo-200 hover:bg-indigo-50'">
+                                                        <span x-text="isCompleted ? '✓ Selesai' : 'Tandai Selesai'"></span>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
                                     @endforeach
                                 </div>
                             @endif
