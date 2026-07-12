@@ -106,18 +106,21 @@ class DatabaseSeeder extends Seeder
             'subject_id' => $subjectWeb->id,
             'title' => 'CSS Grid Layout',
             'content' => 'Materi tentang CSS Grid Layout untuk merancang tata letak halaman web secara dua dimensi.',
+            'file_path' => 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
         ]);
 
         Material::create([
             'subject_id' => $subjectDesign->id,
             'title' => 'Color Theory Basics',
             'content' => 'Dasar-dasar teori warna termasuk warna primer, sekunder, komplementer, dan psikologi warna dalam desain.',
+            'file_path' => 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
         ]);
 
         Material::create([
             'subject_id' => $subjectIndo->id,
             'title' => 'Struktur Teks Eksplanasi',
             'content' => 'Mempelajari struktur penulisan teks eksplanasi yang terdiri dari pernyataan umum, deretan penjelas, dan interpretasi.',
+            'file_path' => 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
         ]);
 
         // 7. Create Assignments

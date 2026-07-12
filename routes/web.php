@@ -133,6 +133,20 @@ Route::get('/my-class', function () {
     return view('my-class', compact('classroom', 'subjects'));
 })->middleware(['auth', 'verified'])->name('my-class');
 
+Route::get('/materials', function () {
+    $user = auth()->user();
+    
+    // Mengambil kelas beserta wali kelas dan mata pelajaran serta materinya
+    $classroom = $user->classes()->with(['homeroomTeacher', 'subjects.teacher', 'subjects.materials'])->first();
+    
+    $subjects = collect();
+    if ($classroom) {
+        $subjects = $classroom->subjects;
+    }
+    
+    return view('materials', compact('classroom', 'subjects'));
+})->middleware(['auth', 'verified'])->name('materials');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
