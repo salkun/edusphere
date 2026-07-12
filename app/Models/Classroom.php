@@ -9,7 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Classroom extends Model
 {
     protected $table = 'classes';
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'homeroom_teacher_id'];
+
+    public function homeroomTeacher()
+    {
+        return $this->belongsTo(User::class, 'homeroom_teacher_id');
+    }
 
     public function students(): BelongsToMany
     {

@@ -115,6 +115,24 @@ Route::post('/materials/{material}/toggle', function (\App\Models\Material $mate
     return back();
 })->middleware('auth')->name('materials.toggle');
 
+Route::get('/my-class', function () {
+    $user = auth()->user();
+    
+    // Mengambil kelas beserta wali kelas dan mata pelajaran terjadwal
+    $classroom = $user->classes()->with(['homeroomTeacher', 'subjects.teacher'])->first();
+    
+    $subjects = collect();
+    if ($classroom) {
+        // Urutkan mata pelajaran berdasarkan hari dan jam mulai
+        $dayOrder = ['Senin' => 1, 'Selasa' => 2, 'Rabu' => 3, 'Kamis' => 4, 'Jumat' => 5, 'Sabtu' => 6];
+        $subjects = $classroom->subjects->sortBy(function ($subject) use ($dayOrder) {
+            return [$dayOrder[$subject->day] ?? 9, $subject->start_time];
+        });
+    }
+    
+    return view('my-class', compact('classroom', 'subjects'));
+})->middleware(['auth', 'verified'])->name('my-class');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
