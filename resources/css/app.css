@@ -72,3 +72,7 @@
     --indigo-950: 69 26 3;
 }
 
+[x-cloak] {
+    display: none !important;
+}
+

@@ -363,9 +363,12 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [\App\Http\Controllers\AdminController::class, 'index'])->name('index');
     Route::post('/settings/sidebar', [\App\Http\Controllers\AdminController::class, 'updateRoleSidebar'])->name('settings.sidebar');
+    Route::post('/logs/clear', [\App\Http\Controllers\AdminController::class, 'clearLogs'])->name('logs.clear');
 
     // User CRUD
     Route::get('/users', [\App\Http\Controllers\AdminController::class, 'usersIndex'])->name('users.index');
+    Route::get('/users/template', [\App\Http\Controllers\AdminController::class, 'downloadTemplate'])->name('users.template');
+    Route::post('/users/import', [\App\Http\Controllers\AdminController::class, 'importUsers'])->name('users.import');
     Route::post('/users', [\App\Http\Controllers\AdminController::class, 'storeUser'])->name('users.store');
     Route::post('/users/{user}/update', [\App\Http\Controllers\AdminController::class, 'updateUser'])->name('users.update');
     Route::post('/users/{user}/delete', [\App\Http\Controllers\AdminController::class, 'destroyUser'])->name('users.destroy');

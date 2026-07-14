@@ -54,4 +54,9 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Material::class, 'material_student', 'student_id', 'material_id')->withTimestamps();
     }
+
+    public function subjects()
+    {
+        return $this->belongsToMany(Subject::class, 'subject_teacher', 'teacher_id', 'subject_id')->withTimestamps();
+    }
 }

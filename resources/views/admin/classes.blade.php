@@ -5,7 +5,7 @@
                 <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Administrator</span>
             </div>
             <h1 class="text-3xl font-black text-slate-800 mb-1 font-sans">Kelola Kelas & Wali Kelas</h1>
-            <p class="text-slate-500 font-medium font-sans">Daftarkan kelas belajar baru, edit nama kelas, dan tetapkan Wali Kelas untuk masing-masing kelas.</p>
+            <p class="text-slate-500 font-medium font-sans">Daftarkan kelas belajar baru, tetapkan Wali Kelas, dan atur jadwal per hari beserta durasi belajarnya.</p>
         </div>
     </div>
 
@@ -28,7 +28,7 @@
     @endif
 
     <!-- MAIN BODY -->
-    <div x-data="{ open: false, isEdit: false, actionUrl: '', name: '', homeroom_teacher_id: '' }" class="p-8 bg-white border border-slate-200/60 rounded-3xl shadow-sm">
+    <div x-data="{ open: false, openSchedule: false, isEdit: false, actionUrl: '', name: '', homeroom_teacher_id: '', activeClassName: '', activeClassSubjects: [] }" class="p-8 bg-white border border-slate-200/60 rounded-3xl shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
                 <h2 class="text-lg font-black text-slate-800">Daftar Kelas Belajar</h2>
@@ -74,6 +74,21 @@
                             </td>
                             <td class="px-8 py-4">
                                 <div class="flex items-center justify-end gap-3">
+                                    <!-- Tombol Atur Jadwal & Durasi -->
+                                    <button @click="openSchedule = true; activeClassName = '{{ $c->name }}'; activeClassSubjects = {{ json_encode($c->subjects->map(function($sub) {
+                                        return [
+                                            'id' => $sub->id,
+                                            'name' => $sub->name,
+                                            'day' => $sub->day,
+                                            'start_time' => \Carbon\Carbon::parse($sub->start_time)->format('H:i'),
+                                            'end_time' => \Carbon\Carbon::parse($sub->end_time)->format('H:i'),
+                                            'duration' => \Carbon\Carbon::parse($sub->end_time)->diffInMinutes(\Carbon\Carbon::parse($sub->start_time)),
+                                            'teacher_ids' => $sub->teachers->pluck('id')->toArray()
+                                        ];
+                                    })) }};" 
+                                            class="text-emerald-600 hover:text-emerald-800 text-xs font-bold transition-all px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-xl">
+                                        Jadwal & Durasi
+                                    </button>
                                     <button @click="open = true; isEdit = true; actionUrl = '{{ route('admin.classes.update', $c->id) }}'; name = '{{ $c->name }}'; homeroom_teacher_id = '{{ $c->homeroom_teacher_id ?? '' }}';" 
                                             class="text-indigo-600 hover:text-indigo-800 text-xs font-bold transition-all px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-xl">
                                         Edit
@@ -98,7 +113,15 @@
 
         <!-- MODAL ALPINEJS: KELOLA KELAS -->
         <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" x-cloak>
-            <div @click.away="open = false" class="bg-white rounded-3xl border border-slate-200/60 shadow-xl w-full max-w-md overflow-hidden transform transition-all p-6 space-y-4">
+            <div @click.away="open = false" 
+                 x-show="open"
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="bg-white rounded-3xl border border-slate-200/60 shadow-xl w-full max-w-md overflow-hidden p-6 space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="text-lg font-black text-slate-800" x-text="isEdit ? 'Ubah Kelas' : 'Tambah Kelas'"></h3>
                     <button type="button" @click="open = false" class="text-slate-400 hover:text-slate-650 font-bold text-xl">&times;</button>
@@ -126,6 +149,104 @@
                         <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 shadow-md transition-all">Simpan Kelas</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- MODAL ALPINEJS: JADWAL & DURASI KELAS -->
+        <div x-show="openSchedule" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" x-cloak>
+            <div @click.away="openSchedule = false" 
+                 x-show="openSchedule"
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="bg-white rounded-3xl border border-slate-200/60 shadow-xl w-full max-w-2xl overflow-hidden p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="text-lg font-black text-slate-800">Jadwal & Durasi Kelas</h3>
+                        <p class="text-xs font-bold text-indigo-600" x-text="'Kelas: ' + activeClassName"></p>
+                    </div>
+                    <button type="button" @click="openSchedule = false" class="text-slate-400 hover:text-slate-650 font-bold text-xl">&times;</button>
+                </div>
+                
+                <div class="space-y-4 max-h-[380px] overflow-y-auto pr-2">
+                    <template x-if="activeClassSubjects.length === 0">
+                        <div class="text-center py-8 text-slate-400 italic text-sm">
+                            Belum ada mata pelajaran terdaftar untuk kelas ini.<br>
+                            Silakan tambahkan jadwal mapel melalui menu <a href="{{ route('admin.subjects.index') }}" class="text-indigo-600 font-bold hover:underline">Kelola Mapel & Jadwal</a>.
+                        </div>
+                    </template>
+
+                    <template x-if="activeClassSubjects.length > 0">
+                        <div class="space-y-4">
+                            <template x-for="dayName in ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']">
+                                <div class="space-y-2 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                                    <h4 class="text-xs font-black text-indigo-600 uppercase tracking-wider" x-text="dayName"></h4>
+                                    <div class="space-y-2">
+                                        <template x-for="sub in activeClassSubjects.filter(s => s.day.includes(dayName))">
+                                            <div class="flex flex-col lg:flex-row lg:items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-3.5 gap-4">
+                                                <div class="min-w-0">
+                                                    <div class="font-black text-slate-800 text-sm truncate" x-text="sub.name"></div>
+                                                    <div class="text-[10px] text-slate-550 font-medium font-sans mt-0.5">
+                                                        Hari: <span class="font-bold text-slate-700" x-text="sub.day"></span> &middot; Durasi aktif: <span class="font-bold text-indigo-600" x-text="sub.duration"></span> Menit
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Form Ubah Jam/Durasi & Guru Secara Instan -->
+                                                <form :action="'/admin/subjects/' + sub.id + '/update'" method="POST" class="flex flex-wrap items-center gap-3 shrink-0 bg-white border border-slate-100 p-2.5 rounded-xl">
+                                                    @csrf
+                                                    <input type="hidden" name="name" :value="sub.name">
+                                                    <input type="hidden" name="class_id" :value="sub.class_id">
+                                                    <input type="hidden" name="day" :value="sub.day">
+
+                                                    <!-- Pilih Guru Pengampu -->
+                                                    <div class="flex flex-col">
+                                                        <span class="text-[9px] text-slate-400 font-bold mb-0.5 uppercase tracking-wider">Guru Pengampu</span>
+                                                        <select name="teacher_ids[]" multiple class="text-[10px] border border-slate-200 rounded-lg py-1 px-1.5 focus:ring-1 focus:ring-indigo-500 w-36 bg-slate-50 text-slate-805 font-bold max-h-16 overflow-y-auto">
+                                                            @foreach ($teachers as $t)
+                                                                <option value="{{ $t->id }}" :selected="sub.teacher_ids.includes({{ $t->id }})">{{ $t->name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+
+                                                    <!-- Edit Jam -->
+                                                    <div class="flex flex-col">
+                                                        <span class="text-[9px] text-slate-400 font-bold mb-0.5 uppercase tracking-wider">Jam Belajar</span>
+                                                        <div class="flex items-center gap-1">
+                                                            <input type="text" name="start_time" :value="sub.start_time" required 
+                                                                   placeholder="07:00"
+                                                                   class="w-12 border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-mono font-bold text-center focus:ring-1 focus:ring-indigo-500 text-slate-800 bg-white">
+                                                            <span class="text-xs text-slate-400">-</span>
+                                                            <input type="text" name="end_time" :value="sub.end_time" required 
+                                                                   placeholder="08:30"
+                                                                   class="w-12 border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-mono font-bold text-center focus:ring-1 focus:ring-indigo-500 text-slate-800 bg-white">
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-1.5 transition-all shadow-sm self-end" title="Simpan Jadwal & Guru">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </template>
+
+                                        <div x-show="activeClassSubjects.filter(s => s.day.includes(dayName)).length === 0" class="text-[10px] text-slate-400 italic pl-3">
+                                            Tidak ada jadwal mengajar di hari ini
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+                
+                <div class="flex justify-end pt-3 border-t border-slate-100">
+                    <button type="button" @click="openSchedule = false" class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-all">Selesai</button>
+                </div>
             </div>
         </div>
     </div>

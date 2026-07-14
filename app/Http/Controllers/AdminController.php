@@ -22,12 +22,25 @@ class AdminController extends Controller
         return view('admin');
     }
 
-    /**
-     * Tampilkan halaman Kelola Pengguna.
-     */
-    public function usersIndex(): View
+    public function usersIndex(Request $request): View
     {
-        $users = User::orderBy('name')->get();
+        $query = User::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('role', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role') && in_array($request->role, ['student', 'teacher', 'admin'])) {
+            $query->where('role', $request->role);
+        }
+
+        $users = $query->orderBy('name')->paginate(10)->withQueryString();
+
         return view('admin.users', compact('users'));
     }
 
@@ -47,7 +60,7 @@ class AdminController extends Controller
      */
     public function subjectsIndex(): View
     {
-        $subjects = Subject::with(['classroom', 'teacher'])->orderBy('name')->get();
+        $subjects = Subject::with(['classroom', 'teachers'])->orderBy('name')->get();
         $classes = Classroom::orderBy('name')->get();
         $teachers = User::where('role', 'teacher')->orderBy('name')->get();
 
@@ -166,20 +179,30 @@ class AdminController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'class_id' => ['required', 'exists:classes,id'],
-            'teacher_id' => ['nullable', 'exists:users,id'],
-            'day' => ['required', 'string', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu'],
+            'teacher_ids' => ['nullable', 'array'],
+            'teacher_ids.*' => ['exists:users,id'],
+            'day' => ['required_without:days', 'string'],
+            'days' => ['required_without:day', 'array'],
+            'days.*' => ['string', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
         ]);
 
+        $dayValue = $request->filled('days') ? implode(',', $request->days) : $request->day;
+
         $subject = Subject::create([
             'name' => $request->name,
             'class_id' => $request->class_id,
-            'teacher_id' => $request->teacher_id,
-            'day' => $request->day,
+            'day' => $dayValue,
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,
         ]);
+
+        if ($request->filled('teacher_ids')) {
+            $subject->teachers()->sync($request->teacher_ids);
+            // Fallback sinkronisasi kolom lama untuk kecocokan view lain
+            $subject->update(['teacher_id' => $request->teacher_ids[0]]);
+        }
 
         ActivityLog::create([
             'user_id' => Auth::id(),
@@ -201,21 +224,29 @@ class AdminController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'class_id' => ['required', 'exists:classes,id'],
-            'teacher_id' => ['nullable', 'exists:users,id'],
-            'day' => ['required', 'string', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu'],
+            'teacher_ids' => ['nullable', 'array'],
+            'teacher_ids.*' => ['exists:users,id'],
+            'day' => ['required_without:days', 'string'],
+            'days' => ['required_without:day', 'array'],
+            'days.*' => ['string', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
         ]);
+
+        $dayValue = $request->filled('days') ? implode(',', $request->days) : $request->day;
 
         $oldName = $subject->name;
         $subject->update([
             'name' => $request->name,
             'class_id' => $request->class_id,
-            'teacher_id' => $request->teacher_id,
-            'day' => $request->day,
+            'day' => $dayValue,
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,
         ]);
+
+        $subject->teachers()->sync($request->teacher_ids ?? []);
+        // Fallback sinkronisasi kolom lama untuk kecocokan view lain
+        $subject->update(['teacher_id' => !empty($request->teacher_ids) ? $request->teacher_ids[0] : null]);
 
         ActivityLog::create([
             'user_id' => Auth::id(),
@@ -339,5 +370,174 @@ class AdminController extends Controller
         ]);
 
         return redirect()->back()->with('success', "Pengguna {$userName} berhasil dihapus.");
+    }
+
+    /**
+     * Unduh template CSV untuk import pengguna.
+     */
+    public function downloadTemplate()
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="template_pengguna.csv"',
+        ];
+
+        $callback = function () {
+            $file = fopen('php://output', 'w');
+            // Tambahkan UTF-8 BOM untuk kompatibilitas Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            fputcsv($file, ['nama', 'email', 'password', 'role']);
+            fputcsv($file, ['Ahmad Rahmat', 'ahmad.rahmat@almuhajirin.sch.id', 'password123', 'student']);
+            fputcsv($file, ['Siti Aminah', 'siti.aminah@almuhajirin.sch.id', 'password123', 'teacher']);
+            
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Import pengguna massal dari berkas CSV/Excel.
+     */
+    public function importUsers(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+        ]);
+
+        $file = $request->file('file');
+        $path = $file->getRealPath();
+        
+        $handle = fopen($path, 'r');
+        if (!$handle) {
+            return redirect()->back()->with('error', 'Gagal membuka file.');
+        }
+
+        // Lewati UTF-8 BOM jika ada
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        // Deteksi delimiter: koma atau titik koma (Windows regional standard)
+        $firstLine = fgets($handle);
+        rewind($handle);
+        if ($bom !== "\xEF\xBB\xBF") {
+            fread($handle, 3);
+        }
+        
+        $delimiter = ',';
+        if ($firstLine !== false && strpos($firstLine, ';') !== false && (strpos($firstLine, ',') === false || strpos($firstLine, ';') < strpos($firstLine, ','))) {
+            $delimiter = ';';
+        }
+
+        // Baca header
+        $headers = fgetcsv($handle, 1000, $delimiter);
+        if (!$headers || count($headers) < 4) {
+            fclose($handle);
+            return redirect()->back()->with('error', 'Format header file tidak valid. Pastikan header memiliki kolom: nama, email, password, role.');
+        }
+
+        $headers = array_map(function($h) {
+            return strtolower(trim($h));
+        }, $headers);
+
+        $nameIdx = array_search('nama', $headers);
+        $emailIdx = array_search('email', $headers);
+        $passIdx = array_search('password', $headers);
+        $roleIdx = array_search('role', $headers);
+
+        if ($nameIdx === false || $emailIdx === false || $passIdx === false || $roleIdx === false) {
+            fclose($handle);
+            return redirect()->back()->with('error', 'Format header kolom salah. Harus terdapat kolom: nama, email, password, role.');
+        }
+
+        $imported = 0;
+        $errors = [];
+        $rowNum = 1;
+
+        while (($row = fgetcsv($handle, 1000, $delimiter)) !== false) {
+            $rowNum++;
+            if (count($row) < 4) {
+                continue;
+            }
+
+            $name = trim($row[$nameIdx] ?? '');
+            $email = trim($row[$emailIdx] ?? '');
+            $password = trim($row[$passIdx] ?? '');
+            $role = strtolower(trim($row[$roleIdx] ?? ''));
+
+            if (empty($name) || empty($email) || empty($password) || empty($role)) {
+                $errors[] = "Baris {$rowNum}: Kolom tidak boleh kosong.";
+                continue;
+            }
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Baris {$rowNum}: Format email '{$email}' tidak valid.";
+                continue;
+            }
+
+            if (!in_array($role, ['student', 'teacher', 'admin'])) {
+                $errors[] = "Baris {$rowNum}: Role '{$role}' tidak dikenal (harus student, teacher, atau admin).";
+                continue;
+            }
+
+            if (User::where('email', $email)->exists()) {
+                $errors[] = "Baris {$rowNum}: Email '{$email}' sudah digunakan.";
+                continue;
+            }
+
+            User::create([
+                'name' => $name,
+                'email' => $email,
+                'password' => bcrypt($password),
+                'role' => $role,
+            ]);
+
+            $imported++;
+        }
+
+        fclose($handle);
+
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'activity' => "Mengimpor {$imported} pengguna melalui file CSV",
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'ip_address' => $request->ip() ?? '127.0.0.1',
+            'user_agent' => substr($request->userAgent() ?? '', 0, 255),
+        ]);
+
+        $message = "Berhasil mengimpor {$imported} pengguna.";
+        if (count($errors) > 0) {
+            $message .= " Beberapa baris dilewati: " . implode(', ', array_slice($errors, 0, 3));
+            if (count($errors) > 3) {
+                $message .= " (...dan " . (count($errors) - 3) . " error lainnya)";
+            }
+            return redirect()->back()->with('success', $message);
+        }
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Bersihkan seluruh riwayat log aktivitas sistem.
+     */
+    public function clearLogs(Request $request): RedirectResponse
+    {
+        ActivityLog::truncate();
+
+        // Catat aktivitas pembersihan ke log baru
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'activity' => 'Membersihkan seluruh log aktivitas sistem',
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'ip_address' => $request->ip() ?? '127.0.0.1',
+            'user_agent' => substr($request->userAgent() ?? '', 0, 255),
+        ]);
+
+        return redirect()->back()->with('success', 'Seluruh log aktivitas berhasil dibersihkan.');
     }
 }

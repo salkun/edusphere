@@ -20,6 +20,11 @@ class Subject extends Model
         return $this->belongsTo(User::class, 'teacher_id');
     }
 
+    public function teachers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'subject_teacher', 'subject_id', 'teacher_id')->withTimestamps();
+    }
+
     public function materials(): HasMany
     {
         return $this->hasMany(Material::class);

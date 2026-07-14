@@ -9,12 +9,41 @@
         </div>
     </div>
 
+    <!-- Alert Status -->
+    @if (session('success'))
+        <div class="mb-6 p-4 text-sm text-emerald-800 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-2" role="alert">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="font-bold">{{ session('success') }}</span>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="mb-6 p-4 text-sm text-rose-800 rounded-2xl bg-rose-50 border border-rose-100 flex items-center gap-2" role="alert">
+            <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span class="font-bold">{{ session('error') }}</span>
+        </div>
+    @endif
+
     <!-- TABLE LOG AKTIVITAS -->
     <div class="p-8 bg-white border border-slate-200/60 rounded-3xl shadow-sm overflow-hidden">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h2 class="text-lg font-black text-slate-800">Riwayat Aktivitas Sistem</h2>
                 <p class="text-xs text-slate-450 mt-0.5 font-medium font-sans">Catatan seluruh aksi login, view halaman, dan pengunggahan file secara real-time.</p>
+            </div>
+            <div>
+                <form action="{{ route('admin.logs.clear') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus seluruh riwayat log aktivitas? Tindakan ini tidak dapat dibatalkan.')">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs px-4 py-2.5 rounded-2xl shadow-sm transition-all duration-200">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Bersihkan Log
+                    </button>
+                </form>
             </div>
         </div>
 
