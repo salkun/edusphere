@@ -16,10 +16,13 @@ class RoleMiddleware
         $user = $request->user();
 
         if (! $user || ! in_array($user->role, $roles, true)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Anda tidak memiliki akses ke resource ini.',
-            ], 403);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Anda tidak memiliki akses ke resource ini.',
+                ], 403);
+            }
+            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
         return $next($request);

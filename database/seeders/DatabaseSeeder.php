@@ -267,5 +267,18 @@ class DatabaseSeeder extends Seeder
             'final_grade' => 82.00,
             'competence' => 'Menunjukkan pemahaman yang baik dalam menganalisis ekosistem lingkungan hidup dan dampak pencemaran air.',
         ]);
+
+        // 11. Inisialisasi default settings untuk visibilitas sidebar per-role (siswa, teacher, admin)
+        $roles = ['student', 'teacher', 'admin'];
+        $menus = ['class', 'materials', 'assignments', 'announcements', 'grades'];
+        
+        foreach ($roles as $role) {
+            foreach ($menus as $menu) {
+                \App\Models\SystemSetting::create([
+                    'key' => $role . '_menu_' . $menu . '_visible',
+                    'value' => 'true'
+                ]);
+            }
+        }
     }
 }

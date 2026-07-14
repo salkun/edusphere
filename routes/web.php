@@ -47,6 +47,7 @@ Route::get('/dashboard', function () {
     $totalClassItemsCount = 0;
     $completedClassItemsCount = 0;
     $globalProgress = 0;
+    $streak = 0;
     
     if ($classroom) {
         // Ambil ID materi yang sudah diselesaikan oleh siswa ini
@@ -187,7 +188,7 @@ Route::get('/my-class', function () {
     }
     
     return view('my-class', compact('classroom', 'subjects'));
-})->middleware(['auth', 'verified'])->name('my-class');
+})->middleware(['auth', 'verified', 'menu.visible:class'])->name('my-class');
 
 Route::get('/materials', function () {
     $user = auth()->user();
@@ -203,7 +204,7 @@ Route::get('/materials', function () {
     }
     
     return view('materials', compact('classroom', 'subjects', 'completedMaterialIds'));
-})->middleware(['auth', 'verified'])->name('materials');
+})->middleware(['auth', 'verified', 'menu.visible:materials'])->name('materials');
 
 Route::get('/assignments', function () {
     $user = auth()->user();
@@ -230,7 +231,7 @@ Route::get('/assignments', function () {
     }
     
     return view('assignments', compact('classroom', 'assignments', 'submittedAssignmentIds'));
-})->middleware(['auth', 'verified'])->name('assignments');
+})->middleware(['auth', 'verified', 'menu.visible:assignments'])->name('assignments');
 
 Route::get('/assignments/{assignment}', function (\App\Models\Assignment $assignment) {
     $user = auth()->user();
@@ -254,7 +255,7 @@ Route::get('/assignments/{assignment}', function (\App\Models\Assignment $assign
         ->first();
         
     return view('assignments-show', compact('classroom', 'assignment', 'submission'));
-})->middleware(['auth', 'verified'])->name('assignments.show');
+})->middleware(['auth', 'verified', 'menu.visible:assignments'])->name('assignments.show');
 
 Route::post('/assignments/{assignment}/submit', function (\App\Models\Assignment $assignment) {
     $user = auth()->user();
@@ -295,7 +296,7 @@ Route::post('/assignments/{assignment}/submit', function (\App\Models\Assignment
     );
     
     return redirect()->route('assignments')->with('success', 'Tugas berhasil dikumpulkan!');
-})->middleware(['auth', 'verified'])->name('assignments.submit');
+})->middleware(['auth', 'verified', 'menu.visible:assignments'])->name('assignments.submit');
 
 Route::get('/announcements', function () {
     $user = auth()->user();
@@ -313,7 +314,7 @@ Route::get('/announcements', function () {
     }
     
     return view('announcements', compact('classroom', 'announcements'));
-})->middleware(['auth', 'verified'])->name('announcements');
+})->middleware(['auth', 'verified', 'menu.visible:announcements'])->name('announcements');
 
 Route::get('/grades', function () {
     $user = auth()->user();
@@ -342,7 +343,7 @@ Route::get('/grades', function () {
     }
         
     return view('grades', compact('classroom', 'reportCard', 'availableSemesters', 'selectedSemester'));
-})->middleware(['auth', 'verified'])->name('grades');
+})->middleware(['auth', 'verified', 'menu.visible:grades'])->name('grades');
 
 Route::get('/settings', function () {
     return view('settings');
@@ -352,6 +353,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+});
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminController::class, 'index'])->name('index');
+    Route::post('/settings/sidebar', [\App\Http\Controllers\AdminController::class, 'updateRoleSidebar'])->name('settings.sidebar');
 });
 
 require __DIR__.'/auth.php';
