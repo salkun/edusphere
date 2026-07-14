@@ -24,6 +24,11 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = auth()->user();
     
+    if ($user && $user->role === 'admin') {
+        $logs = \App\Models\ActivityLog::with('user')->orderBy('created_at', 'desc')->paginate(10);
+        return view('dashboard-admin', compact('logs'));
+    }
+
     // Menghitung ucapan selamat berdasarkan waktu Purwakarta (WIB / Asia/Jakarta)
     $hour = \Carbon\Carbon::now('Asia/Jakarta')->hour;
     if ($hour >= 4 && $hour < 11) {
@@ -358,6 +363,24 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [\App\Http\Controllers\AdminController::class, 'index'])->name('index');
     Route::post('/settings/sidebar', [\App\Http\Controllers\AdminController::class, 'updateRoleSidebar'])->name('settings.sidebar');
+
+    // User CRUD
+    Route::get('/users', [\App\Http\Controllers\AdminController::class, 'usersIndex'])->name('users.index');
+    Route::post('/users', [\App\Http\Controllers\AdminController::class, 'storeUser'])->name('users.store');
+    Route::post('/users/{user}/update', [\App\Http\Controllers\AdminController::class, 'updateUser'])->name('users.update');
+    Route::post('/users/{user}/delete', [\App\Http\Controllers\AdminController::class, 'destroyUser'])->name('users.destroy');
+
+    // Class CRUD
+    Route::get('/classes', [\App\Http\Controllers\AdminController::class, 'classesIndex'])->name('classes.index');
+    Route::post('/classes', [\App\Http\Controllers\AdminController::class, 'storeClass'])->name('classes.store');
+    Route::post('/classes/{class}/update', [\App\Http\Controllers\AdminController::class, 'updateClass'])->name('classes.update');
+    Route::post('/classes/{class}/delete', [\App\Http\Controllers\AdminController::class, 'destroyClass'])->name('classes.destroy');
+
+    // Subject/Mapel CRUD & Schedule
+    Route::get('/subjects', [\App\Http\Controllers\AdminController::class, 'subjectsIndex'])->name('subjects.index');
+    Route::post('/subjects', [\App\Http\Controllers\AdminController::class, 'storeSubject'])->name('subjects.store');
+    Route::post('/subjects/{subject}/update', [\App\Http\Controllers\AdminController::class, 'updateSubject'])->name('subjects.update');
+    Route::post('/subjects/{subject}/delete', [\App\Http\Controllers\AdminController::class, 'destroySubject'])->name('subjects.destroy');
 });
 
 require __DIR__.'/auth.php';
