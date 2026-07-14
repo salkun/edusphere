@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'jejakmu' => [
+        'url' => env('JEJAKMU_API_URL', 'https://jejakmu.smp2almuhajirin.sch.id'),
+        'default_password' => env('JEJAKMU_DEFAULT_PASSWORD', 'password123'),
+    ],
+
 ];
