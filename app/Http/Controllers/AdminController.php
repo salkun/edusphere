@@ -49,10 +49,12 @@ class AdminController extends Controller
      */
     public function classesIndex(): View
     {
-        $classes = Classroom::with(['homeroomTeacher', 'subjects'])->orderBy('name')->get();
+        $classes = Classroom::with(['homeroomTeacher', 'subjects.teachers', 'students'])->orderBy('name')->get();
         $teachers = User::where('role', 'teacher')->orderBy('name')->get();
+        $masterSubjects = \App\Models\MasterSubject::with('teachers')->orderBy('name')->get();
+        $allStudents = User::where('role', 'student')->orderBy('name')->get();
         
-        return view('admin.classes', compact('classes', 'teachers'));
+        return view('admin.classes', compact('classes', 'teachers', 'masterSubjects', 'allStudents'));
     }
 
     /**
@@ -60,11 +62,10 @@ class AdminController extends Controller
      */
     public function subjectsIndex(): View
     {
-        $subjects = Subject::with(['classroom', 'teachers'])->orderBy('name')->get();
-        $classes = Classroom::orderBy('name')->get();
+        $subjects = \App\Models\MasterSubject::with('teachers')->orderBy('name')->get();
         $teachers = User::where('role', 'teacher')->orderBy('name')->get();
 
-        return view('admin.subjects', compact('subjects', 'classes', 'teachers'));
+        return view('admin.subjects', compact('subjects', 'teachers'));
     }
 
     /**
@@ -177,107 +178,165 @@ class AdminController extends Controller
     public function storeSubject(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'class_id' => ['required', 'exists:classes,id'],
+            'name' => ['required', 'string', 'max:255', 'unique:master_subjects,name'],
             'teacher_ids' => ['nullable', 'array'],
             'teacher_ids.*' => ['exists:users,id'],
-            'day' => ['required_without:days', 'string'],
-            'days' => ['required_without:day', 'array'],
-            'days.*' => ['string', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i'],
         ]);
 
-        $dayValue = $request->filled('days') ? implode(',', $request->days) : $request->day;
-
-        $subject = Subject::create([
+        $subject = \App\Models\MasterSubject::create([
             'name' => $request->name,
-            'class_id' => $request->class_id,
-            'day' => $dayValue,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
         ]);
 
         if ($request->filled('teacher_ids')) {
             $subject->teachers()->sync($request->teacher_ids);
-            // Fallback sinkronisasi kolom lama untuk kecocokan view lain
-            $subject->update(['teacher_id' => $request->teacher_ids[0]]);
         }
 
         ActivityLog::create([
             'user_id' => Auth::id(),
-            'activity' => "Membuat mata pelajaran baru: {$subject->name} untuk kelas {$subject->classroom->name}",
+            'activity' => "Membuat master mata pelajaran baru: {$subject->name}",
             'url' => $request->fullUrl(),
             'method' => $request->method(),
             'ip_address' => $request->ip() ?? '127.0.0.1',
             'user_agent' => substr($request->userAgent() ?? '', 0, 255),
         ]);
 
-        return redirect()->back()->with('success', "Mata pelajaran {$subject->name} berhasil ditambahkan.");
+        return redirect()->back()->with('success', "Master mata pelajaran {$subject->name} berhasil ditambahkan.");
     }
 
     /**
      * CRUD: Perbarui mata pelajaran.
      */
-    public function updateSubject(Request $request, Subject $subject): RedirectResponse
+    public function updateSubject(Request $request, $id): RedirectResponse
     {
+        $subject = \App\Models\MasterSubject::findOrFail($id);
+
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'class_id' => ['required', 'exists:classes,id'],
+            'name' => ['required', 'string', 'max:255', 'unique:master_subjects,name,' . $subject->id],
             'teacher_ids' => ['nullable', 'array'],
             'teacher_ids.*' => ['exists:users,id'],
-            'day' => ['required_without:days', 'string'],
-            'days' => ['required_without:day', 'array'],
-            'days.*' => ['string', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i'],
         ]);
-
-        $dayValue = $request->filled('days') ? implode(',', $request->days) : $request->day;
 
         $oldName = $subject->name;
         $subject->update([
             'name' => $request->name,
-            'class_id' => $request->class_id,
-            'day' => $dayValue,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
         ]);
 
         $subject->teachers()->sync($request->teacher_ids ?? []);
-        // Fallback sinkronisasi kolom lama untuk kecocokan view lain
-        $subject->update(['teacher_id' => !empty($request->teacher_ids) ? $request->teacher_ids[0] : null]);
 
         ActivityLog::create([
             'user_id' => Auth::id(),
-            'activity' => "Memperbarui mata pelajaran {$oldName} menjadi {$subject->name}",
+            'activity' => "Memperbarui master mata pelajaran {$oldName} menjadi {$subject->name}",
             'url' => $request->fullUrl(),
             'method' => $request->method(),
             'ip_address' => $request->ip() ?? '127.0.0.1',
             'user_agent' => substr($request->userAgent() ?? '', 0, 255),
         ]);
 
-        return redirect()->back()->with('success', "Mata pelajaran {$subject->name} berhasil diperbarui.");
+        return redirect()->back()->with('success', "Master mata pelajaran {$subject->name} berhasil diperbarui.");
     }
 
     /**
      * CRUD: Hapus mata pelajaran.
      */
-    public function destroySubject(Request $request, Subject $subject): RedirectResponse
+    public function destroySubject(Request $request, $id): RedirectResponse
     {
+        $subject = \App\Models\MasterSubject::findOrFail($id);
         $subjectName = $subject->name;
         $subject->delete();
 
         ActivityLog::create([
             'user_id' => Auth::id(),
-            'activity' => "Menghapus mata pelajaran {$subjectName}",
+            'activity' => "Menghapus master mata pelajaran {$subjectName}",
             'url' => $request->fullUrl(),
             'method' => $request->method(),
             'ip_address' => $request->ip() ?? '127.0.0.1',
             'user_agent' => substr($request->userAgent() ?? '', 0, 255),
         ]);
 
-        return redirect()->back()->with('success', "Mata pelajaran {$subjectName} berhasil dihapus.");
+        return redirect()->back()->with('success', "Master mata pelajaran {$subjectName} berhasil dihapus.");
+    }
+
+    /**
+     * Menyimpan jadwal kelas secara massal (batch save).
+     */
+    public function saveClassSchedule(Request $request, $classId): RedirectResponse
+    {
+        $request->validate([
+            'schedules' => ['required', 'string'],
+            'deleted_ids' => ['nullable', 'string'],
+        ]);
+
+        $class = Classroom::findOrFail($classId);
+
+        $schedules = json_decode($request->schedules, true) ?? [];
+        $deletedIds = json_decode($request->deleted_ids, true) ?? [];
+
+        // 1. Hapus jadwal yang ditandai untuk dihapus
+        if (!empty($deletedIds)) {
+            Subject::whereIn('id', $deletedIds)->where('class_id', $classId)->delete();
+        }
+
+        // 2. Tambah / Update Jadwal
+        foreach ($schedules as $sched) {
+            $startTimeStr = $sched['start_time'] ?? '07:00';
+            $durationVal = intval($sched['duration'] ?? 90);
+            if ($durationVal < 1) {
+                $durationVal = 90;
+            }
+
+            // Hitung jam selesai
+            $startTime = \Carbon\Carbon::parse($startTimeStr);
+            $endTimeStr = $startTime->copy()->addMinutes($durationVal)->format('H:i');
+
+            // Format day(s)
+            $dayValue = '';
+            if (isset($sched['days']) && is_array($sched['days'])) {
+                $dayValue = implode(',', $sched['days']);
+            } elseif (isset($sched['day'])) {
+                $dayValue = $sched['day'];
+            }
+
+            if (empty($dayValue)) {
+                $dayValue = 'Senin';
+            }
+
+            // Cek apakah item baru atau lama
+            if (isset($sched['is_new']) && $sched['is_new']) {
+                $subject = Subject::create([
+                    'name' => $sched['name'],
+                    'class_id' => $classId,
+                    'day' => $dayValue,
+                    'start_time' => $startTimeStr,
+                    'end_time' => $endTimeStr,
+                ]);
+            } else {
+                $subject = Subject::where('id', $sched['id'])->where('class_id', $classId)->first();
+                if ($subject) {
+                    $subject->update([
+                        'day' => $dayValue,
+                        'start_time' => $startTimeStr,
+                        'end_time' => $endTimeStr,
+                    ]);
+                }
+            }
+
+            if ($subject) {
+                $teacherIds = $sched['teacher_ids'] ?? [];
+                $subject->teachers()->sync($teacherIds);
+                $subject->update(['teacher_id' => !empty($teacherIds) ? $teacherIds[0] : null]);
+            }
+        }
+
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'activity' => "Memperbarui seluruh jadwal & mapel kelas {$class->name} secara massal",
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'ip_address' => $request->ip() ?? '127.0.0.1',
+            'user_agent' => substr($request->userAgent() ?? '', 0, 255),
+        ]);
+
+        return redirect()->back()->with('success', "Jadwal kelas {$class->name} berhasil diperbarui.");
     }
 
     /**
@@ -539,5 +598,43 @@ class AdminController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Seluruh log aktivitas berhasil dibersihkan.');
+    }
+
+    /**
+     * Menyimpan anggota kelas secara massal (batch save).
+     */
+    public function saveClassStudents(Request $request, $classId): RedirectResponse
+    {
+        $request->validate([
+            'added_student_ids' => ['nullable', 'string'],
+            'removed_student_ids' => ['nullable', 'string'],
+        ]);
+
+        $class = Classroom::findOrFail($classId);
+
+        $addedIds = json_decode($request->added_student_ids, true) ?? [];
+        $removedIds = json_decode($request->removed_student_ids, true) ?? [];
+
+        if (!empty($removedIds)) {
+            $class->students()->detach($removedIds);
+        }
+
+        if (!empty($addedIds)) {
+            $class->students()->attach($addedIds);
+        }
+
+        $addedCount = count($addedIds);
+        $removedCount = count($removedIds);
+
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'activity' => "Memperbarui anggota kelas {$class->name}: Menambahkan {$addedCount} siswa & mengeluarkan {$removedCount} siswa secara massal",
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'ip_address' => $request->ip() ?? '127.0.0.1',
+            'user_agent' => substr($request->userAgent() ?? '', 0, 255),
+        ]);
+
+        return redirect()->back()->with('success', "Anggota kelas {$class->name} berhasil diperbarui (Ditambah: {$addedCount}, Dikeluarkan: {$removedCount}).");
     }
 }

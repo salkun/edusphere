@@ -379,11 +379,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/classes/{class}/update', [\App\Http\Controllers\AdminController::class, 'updateClass'])->name('classes.update');
     Route::post('/classes/{class}/delete', [\App\Http\Controllers\AdminController::class, 'destroyClass'])->name('classes.destroy');
 
-    // Subject/Mapel CRUD & Schedule
+    // Subject/Mapel CRUD & Schedule (Master)
     Route::get('/subjects', [\App\Http\Controllers\AdminController::class, 'subjectsIndex'])->name('subjects.index');
     Route::post('/subjects', [\App\Http\Controllers\AdminController::class, 'storeSubject'])->name('subjects.store');
-    Route::post('/subjects/{subject}/update', [\App\Http\Controllers\AdminController::class, 'updateSubject'])->name('subjects.update');
-    Route::post('/subjects/{subject}/delete', [\App\Http\Controllers\AdminController::class, 'destroySubject'])->name('subjects.destroy');
+    Route::post('/subjects/{id}/update', [\App\Http\Controllers\AdminController::class, 'updateSubject'])->name('subjects.update');
+    Route::post('/subjects/{id}/delete', [\App\Http\Controllers\AdminController::class, 'destroySubject'])->name('subjects.destroy');
+
+    // Class Subjects & Scheduling
+    Route::post('/classes/{classId}/schedule/save', [\App\Http\Controllers\AdminController::class, 'saveClassSchedule'])->name('classes.schedule.save');
+
+    // Class Students Management
+    Route::post('/classes/{classId}/students/save', [\App\Http\Controllers\AdminController::class, 'saveClassStudents'])->name('classes.students.save');
 });
 
 require __DIR__.'/auth.php';
