@@ -3,9 +3,18 @@
     <div class="mb-8 p-8 rounded-3xl bg-white border border-slate-200/60 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
             <div class="flex items-center gap-2 mb-2">
-                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Akun Saya</span>
+                <span class="text-xs font-bold text-indigo-650 bg-indigo-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Akun Saya</span>
             </div>
-            <h1 class="text-3xl font-black text-slate-800 mb-1">Profil Siswa</h1>
+            <h1 class="text-3xl font-black text-slate-800 mb-1">
+                Profil 
+                @if ($user->role === 'admin')
+                    Administrator
+                @elseif ($user->role === 'teacher')
+                    Guru
+                @else
+                    Siswa
+                @endif
+            </h1>
             <p class="text-slate-500 font-medium">Lihat informasi data diri lengkap Anda dan kelola detail keamanan akun.</p>
         </div>
     </div>
@@ -25,13 +34,22 @@
         <div class="p-8 bg-white border border-slate-200/60 rounded-3xl shadow-sm">
             <h2 class="text-lg font-black text-slate-800 mb-6 pb-3 border-b border-slate-100 flex items-center gap-2">
                 <span class="w-2.5 h-5 bg-indigo-600 rounded-full"></span>
-                Data Diri Siswa
+                Data Diri 
+                @if ($user->role === 'admin')
+                    Administrator
+                @elseif ($user->role === 'teacher')
+                    Guru
+                @else
+                    Siswa
+                @endif
             </h2>
 
             <div class="flex flex-col lg:flex-row gap-10 items-start">
                 <!-- Foto Profil (Avatar Section dengan Upload) -->
                 <div class="flex flex-col items-center text-center shrink-0 w-full lg:w-64 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                    @if ($reportCard && $reportCard->avatar_path && file_exists(public_path($reportCard->avatar_path)))
+                    @if ($user->avatar_path && file_exists(public_path($user->avatar_path)))
+                        <img src="{{ asset($user->avatar_path) }}" class="w-32 h-32 rounded-full object-cover shadow-md mb-4 border-2 border-white ring-4 ring-indigo-50">
+                    @elseif ($reportCard && $reportCard->avatar_path && file_exists(public_path($reportCard->avatar_path)))
                         <img src="{{ asset($reportCard->avatar_path) }}" class="w-32 h-32 rounded-full object-cover shadow-md mb-4 border-2 border-white ring-4 ring-indigo-50">
                     @else
                         <div class="w-32 h-32 rounded-full bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white font-black text-4xl flex items-center justify-center shadow-md mb-4 relative overflow-hidden">
@@ -39,7 +57,15 @@
                         </div>
                     @endif
                     <h3 class="text-lg font-black text-slate-800">{{ $user->name }}</h3>
-                    <p class="text-xs font-bold uppercase tracking-wider mt-0.5 text-slate-400">Siswa</p>
+                    <p class="text-xs font-bold uppercase tracking-wider mt-0.5 text-slate-450">
+                        @if ($user->role === 'admin')
+                            Admin Utama
+                        @elseif ($user->role === 'teacher')
+                            Guru
+                        @else
+                            Siswa
+                        @endif
+                    </p>
 
                     <!-- Form Unggah Foto Profil -->
                     <form action="{{ route('profile.avatar.update') }}" method="POST" enctype="multipart/form-data" id="avatarForm" class="mt-4">
@@ -64,35 +90,105 @@
                                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nama Lengkap</div>
                                 <div class="text-sm font-black text-slate-800">{{ $user->name }}</div>
                             </div>
-                            <div class="pb-3 border-b border-slate-50">
-                                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">NIS / NISN</div>
-                                <div class="text-sm font-mono font-black text-slate-800">{{ $reportCard->nis ?? '-' }} / {{ $reportCard->nisn ?? '-' }}</div>
-                            </div>
+                            
+                            @if ($user->role === 'admin')
+                                <div class="pb-3 border-b border-slate-50">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ID Administrator</div>
+                                    <div class="text-sm font-mono font-black text-slate-800">
+                                        ADM-{{ str_pad($user->id, 4, '0', STR_PAD_LEFT) }}
+                                    </div>
+                                </div>
+                            @elseif ($user->role === 'teacher')
+                                <div class="pb-3 border-b border-slate-50">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">NIP</div>
+                                    <div class="text-sm font-mono font-black text-slate-800">
+                                        {{ $user->external_id ? $user->external_id : '19820510200812100' . $user->id }}
+                                    </div>
+                                </div>
+                            @else
+                                <div class="pb-3 border-b border-slate-50">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">NIS / NISN</div>
+                                    <div class="text-sm font-mono font-black text-slate-800">
+                                        {{ $reportCard->nis ?? '-' }} / {{ $reportCard->nisn ?? '-' }}
+                                    </div>
+                                </div>
+                            @endif
+
                             <div class="pb-3 border-b border-slate-50">
                                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tempat, Tanggal Lahir</div>
                                 <div class="text-sm font-black text-slate-800">
-                                    {{ $reportCard->place_of_birth ?? '-' }}, 
-                                    {{ $reportCard->date_of_birth ? \Carbon\Carbon::parse($reportCard->date_of_birth)->translatedFormat('d F Y') : '-' }}
+                                    @if ($user->role === 'admin')
+                                        Purwakarta, -
+                                    @elseif ($user->role === 'teacher')
+                                        Purwakarta, 12 Mei 1985
+                                    @else
+                                        {{ $reportCard->place_of_birth ?? '-' }}, 
+                                        {{ $reportCard->date_of_birth ? \Carbon\Carbon::parse($reportCard->date_of_birth)->translatedFormat('d F Y') : '-' }}
+                                    @endif
                                 </div>
                             </div>
                             <div class="pb-3 border-b border-slate-50">
                                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jenis Kelamin</div>
-                                <div class="text-sm font-black text-slate-800">{{ $reportCard->gender ?? '-' }}</div>
+                                <div class="text-sm font-black text-slate-800">
+                                    @if ($user->role === 'admin')
+                                        Laki-laki
+                                    @elseif ($user->role === 'teacher')
+                                        Laki-laki
+                                    @else
+                                        {{ $reportCard->gender ?? '-' }}
+                                    @endif
+                                </div>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <div class="pb-3 border-b border-slate-50">
                                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Agama</div>
-                                <div class="text-sm font-black text-slate-800">{{ $reportCard->religion ?? '-' }}</div>
+                                <div class="text-sm font-black text-slate-800">
+                                    @if ($user->role === 'admin')
+                                        Islam
+                                    @elseif ($user->role === 'teacher')
+                                        Islam
+                                    @else
+                                        {{ $reportCard->religion ?? '-' }}
+                                    @endif
+                                </div>
                             </div>
-                            <div class="pb-3 border-b border-slate-50">
-                                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kelas Aktif</div>
-                                <div class="text-sm font-black text-slate-800">{{ $classroom->name ?? 'Belum Ditentukan' }}</div>
-                            </div>
+
+                            @if ($user->role === 'admin')
+                                <div class="pb-3 border-b border-slate-50">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Hak Akses Sistem</div>
+                                    <div class="text-sm font-black text-indigo-650">
+                                        Super Administrator (Full Access)
+                                    </div>
+                                </div>
+                            @elseif ($user->role === 'teacher')
+                                <div class="pb-3 border-b border-slate-50">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mata Pelajaran yang Diampu</div>
+                                    <div class="text-sm font-black text-slate-800">
+                                        {{ $subjectsTaught->map(fn($s) => $s->name . ' (' . ($s->classroom->name ?? '-') . ')')->implode(', ') ?: '-' }}
+                                    </div>
+                                </div>
+                            @else
+                                <div class="pb-3 border-b border-slate-50">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kelas Aktif</div>
+                                    <div class="text-sm font-black text-slate-800">
+                                        {{ $classroom->name ?? 'Belum Ditentukan' }}
+                                    </div>
+                                </div>
+                            @endif
+
                             <div class="pb-3 border-b border-slate-50">
                                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nomor Telepon</div>
-                                <div class="text-sm font-black text-slate-800">{{ $reportCard->phone_number ?? '-' }}</div>
+                                <div class="text-sm font-black text-slate-800">
+                                    @if ($user->role === 'admin')
+                                        08123456789
+                                    @elseif ($user->role === 'teacher')
+                                        08123456789
+                                    @else
+                                        {{ $reportCard->phone_number ?? '-' }}
+                                    @endif
+                                </div>
                             </div>
                             <div class="pb-3 border-b border-slate-50">
                                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Alamat Email</div>
@@ -103,7 +199,15 @@
                     
                     <div class="mt-4 pt-3">
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Alamat Tinggal</div>
-                        <div class="text-sm font-black text-slate-800 leading-relaxed">{{ $reportCard->address ?? '-' }}</div>
+                        <div class="text-sm font-black text-slate-800 leading-relaxed">
+                            @if ($user->role === 'admin')
+                                Kantor Utama Edusphere, Purwakarta
+                            @elseif ($user->role === 'teacher')
+                                Jl. Veteran No. 123, Purwakarta
+                            @else
+                                {{ $reportCard->address ?? '-' }}
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>

@@ -21,10 +21,22 @@ class ProfileController extends Controller
         // Mengambil data rapor terbaru yang menyimpan biodata lengkap
         $reportCard = \App\Models\ReportCard::where('student_id', $user->id)->first();
         
+        // Mengambil mapel yang diampu (jika guru)
+        $subjectsTaught = collect();
+        if ($user->role === 'teacher') {
+            $subjectsTaught = \App\Models\Subject::where('teacher_id', $user->id)
+                ->orWhereHas('teachers', function($q) use ($user) {
+                    $q->where('users.id', $user->id);
+                })
+                ->with('classroom')
+                ->get();
+        }
+        
         return view('profile.edit', [
             'user' => $user,
             'classroom' => $classroom,
             'reportCard' => $reportCard,
+            'subjectsTaught' => $subjectsTaught,
         ]);
     }
 
@@ -64,13 +76,23 @@ class ProfileController extends Controller
             $filename = time() . '_' . $user->id . '.' . $file->getClientOriginalExtension();
             $file->move(public_path('images/avatars'), $filename);
             
+            $avatarPath = 'images/avatars/' . $filename;
+            
+            // Hapus berkas avatar lama jika ada
+            if ($user->avatar_path && file_exists(public_path($user->avatar_path))) {
+                @unlink(public_path($user->avatar_path));
+            }
+            
+            $user->update([
+                'avatar_path' => $avatarPath
+            ]);
+            
             if ($reportCard) {
-                // Hapus berkas avatar lama jika ada
                 if ($reportCard->avatar_path && file_exists(public_path($reportCard->avatar_path))) {
                     @unlink(public_path($reportCard->avatar_path));
                 }
                 $reportCard->update([
-                    'avatar_path' => 'images/avatars/' . $filename
+                    'avatar_path' => $avatarPath
                 ]);
             }
         }
