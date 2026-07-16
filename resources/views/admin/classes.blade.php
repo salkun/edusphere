@@ -128,37 +128,37 @@
             <table class="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
-                        <th class="px-8 py-4">Nama Kelas</th>
-                        <th class="px-6 py-4">Wali Kelas</th>
-                        <th class="px-6 py-4 text-center">Jumlah Siswa</th>
-                        <th class="px-6 py-4 text-center">Jumlah Mapel</th>
-                        <th class="px-8 py-4 text-right">Aksi</th>
+                        <th class="px-8 py-4 whitespace-nowrap">Nama Kelas</th>
+                        <th class="px-6 py-4 whitespace-nowrap">Wali Kelas</th>
+                        <th class="px-6 py-4 text-center whitespace-nowrap">Jumlah Siswa</th>
+                        <th class="px-6 py-4 text-center whitespace-nowrap">Jumlah Mapel</th>
+                        <th class="px-8 py-4 text-right whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50 text-slate-700 text-sm font-medium">
                     @forelse ($classes as $c)
                         <tr>
-                            <td class="px-8 py-4 font-black text-slate-800 text-base">
+                            <td class="px-8 py-4 font-black text-slate-800 text-base whitespace-nowrap">
                                 {{ $c->name }}
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-6 py-4 whitespace-nowrap">
                                 @if ($c->homeroomTeacher)
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <div class="flex items-center gap-1.5 whitespace-nowrap">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                                         <span class="font-bold text-slate-800">{{ $c->homeroomTeacher->name }}</span>
                                     </div>
                                 @else
-                                    <span class="text-xs text-slate-400 italic font-medium">Belum ada Wali Kelas</span>
+                                    <span class="text-xs text-slate-400 italic font-medium whitespace-nowrap">Belum ada Wali Kelas</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-center font-bold text-slate-600">
-                                <span class="bg-slate-100 text-slate-750 text-xs px-2.5 py-1 rounded-full">{{ $c->students->count() }} Siswa</span>
+                            <td class="px-6 py-4 text-center font-bold text-slate-600 whitespace-nowrap">
+                                <span class="bg-slate-100 text-slate-750 text-xs px-2.5 py-1 rounded-full whitespace-nowrap">{{ $c->students->count() }} Siswa</span>
                             </td>
-                            <td class="px-6 py-4 text-center font-bold text-indigo-600">
+                            <td class="px-6 py-4 text-center font-bold text-indigo-600 whitespace-nowrap">
                                 {{ $c->subjects->count() }} Mapel
                             </td>
-                            <td class="px-8 py-4">
-                                <div class="flex items-center justify-end gap-2.5">
+                            <td class="px-8 py-4 whitespace-nowrap">
+                                <div class="flex items-center justify-end gap-2.5 whitespace-nowrap">
                                     <!-- Tombol Kelola Siswa -->
                                     <button @click="openStudents = true; activeClassId = '{{ $c->id }}'; activeClassName = '{{ $c->name }}'; studentSearchQuery = ''; addedStudentIds = []; removedStudentIds = []; activeClassStudents = {{ json_encode($c->students->map(function($student) {
                                         return ['id' => $student->id, 'name' => $student->name, 'email' => $student->email];
