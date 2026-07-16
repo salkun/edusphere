@@ -29,6 +29,10 @@ Route::get('/dashboard', function () {
         return view('dashboard-admin', compact('logs'));
     }
 
+    if ($user && $user->role === 'teacher') {
+        return redirect()->route('teacher.dashboard');
+    }
+
     // Menghitung ucapan selamat berdasarkan waktu Purwakarta (WIB / Asia/Jakarta)
     $hour = \Carbon\Carbon::now('Asia/Jakarta')->hour;
     if ($hour >= 4 && $hour < 11) {
@@ -179,6 +183,9 @@ Route::post('/materials/{material}/toggle', function (\App\Models\Material $mate
 
 Route::get('/my-class', function () {
     $user = auth()->user();
+    if ($user && $user->role === 'teacher') {
+        return redirect()->route('teacher.my-class');
+    }
     
     // Mengambil kelas beserta wali kelas dan mata pelajaran terjadwal
     $classroom = $user->classes()->with(['homeroomTeacher', 'subjects.teacher'])->first();
@@ -197,6 +204,9 @@ Route::get('/my-class', function () {
 
 Route::get('/materials', function () {
     $user = auth()->user();
+    if ($user && $user->role === 'teacher') {
+        return redirect()->route('teacher.materials.index');
+    }
     
     // Mengambil kelas beserta wali kelas dan mata pelajaran serta materinya
     $classroom = $user->classes()->with(['homeroomTeacher', 'subjects.teacher', 'subjects.materials'])->first();
@@ -213,6 +223,9 @@ Route::get('/materials', function () {
 
 Route::get('/assignments', function () {
     $user = auth()->user();
+    if ($user && $user->role === 'teacher') {
+        return redirect()->route('teacher.assignments.index');
+    }
     
     // Mengambil kelas beserta wali kelas
     $classroom = $user->classes()->with(['homeroomTeacher'])->first();
@@ -305,6 +318,9 @@ Route::post('/assignments/{assignment}/submit', function (\App\Models\Assignment
 
 Route::get('/announcements', function () {
     $user = auth()->user();
+    if ($user && $user->role === 'teacher') {
+        return redirect()->route('teacher.announcements.index');
+    }
     
     // Mengambil kelas beserta wali kelas
     $classroom = $user->classes()->with(['homeroomTeacher'])->first();
@@ -323,6 +339,9 @@ Route::get('/announcements', function () {
 
 Route::get('/grades', function () {
     $user = auth()->user();
+    if ($user && $user->role === 'teacher') {
+        return redirect()->route('teacher.grades.index');
+    }
     
     // Mengambil kelas beserta wali kelas
     $classroom = $user->classes()->with(['homeroomTeacher'])->first();
@@ -393,3 +412,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
 
 require __DIR__.'/auth.php';
+
+Route::middleware(['auth', 'verified', 'role:teacher'])->prefix('teacher')->name('teacher.')->group(function () {
+    Route::get('/dashboard', [\App\Http\Controllers\TeacherController::class, 'dashboard'])->name('dashboard');
+    Route::get('/schedule', [\App\Http\Controllers\TeacherController::class, 'schedule'])->name('schedule');
+    Route::get('/my-class', [\App\Http\Controllers\TeacherController::class, 'myClass'])->name('my-class');
+    Route::get('/grades', [\App\Http\Controllers\TeacherController::class, 'gradesIndex'])->name('grades.index');
+    Route::post('/grades/store', [\App\Http\Controllers\TeacherController::class, 'gradesStore'])->name('grades.store');
+    Route::get('/announcements', [\App\Http\Controllers\TeacherController::class, 'announcementsIndex'])->name('announcements.index');
+    Route::post('/announcements', [\App\Http\Controllers\TeacherController::class, 'announcementsStore'])->name('announcements.store');
+
+    Route::get('/materials', [\App\Http\Controllers\TeacherController::class, 'materialsIndex'])->name('materials.index');
+    Route::post('/materials', [\App\Http\Controllers\TeacherController::class, 'materialsStore'])->name('materials.store');
+    Route::get('/assignments', [\App\Http\Controllers\TeacherController::class, 'assignmentsIndex'])->name('assignments.index');
+    Route::post('/assignments', [\App\Http\Controllers\TeacherController::class, 'assignmentsStore'])->name('assignments.store');
+    Route::get('/assignments/{id}/submissions', [\App\Http\Controllers\TeacherController::class, 'getAssignmentSubmissions'])->name('assignments.submissions');
+});
